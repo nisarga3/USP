@@ -4,36 +4,51 @@
 #include <unistd.h>
 #include <stdio.h>
 int main(){
-	int fd[2];
-	pipe(fd);
+	int p1[2], p2[2];
+	pipe(p1); pipe(p2);
 	int rv = fork();
 	if(rv==0)
 	{
 		char buf[100];
 		printf("This is Child \nEnter the data to be to sent to Parent\n");
 		scanf("%[^\n]s",buf);
-		printf("Data sent successfully\n");
-		write(fd[1],buf,sizeof(buf));
+		int nb=write(p1[1],buf,sizeof(buf));
+		if(nb)
+			printf("Data sent successfully\n");
 	}
 	else
 	{
 		char buf[100];
-		fd_set fds;
+		fd_set rd_set;
+		fd_set wr_set;
 		struct timeval tv;
-		FD_ZERO(&fds);
-		FD_SET(fd[0],&fds);
+		FD_ZERO(&rd_set);		
+		FD_ZERO(&wr_set);
+		FD_SET(p1[0],&rd_set);
+		FD_SET(p1[1],&wr_set);
 		tv.tv_sec = 10;
 		tv.tv_usec = 0;
-		int  r= select(fd[0]+1,&fds,NULL,NULL,&tv);
+		int  r= select(p1[0]+1,&rd_set,NULL,NULL,&tv);
 		if(r == -1)
-		printf("Error in Select");
+			printf("Error in Select");
 		else if(r)
 		{
-		printf("This is Parent\nThe data sent by child is\n");
-		read(fd[0],buf,1000);
-		printf("%s\n",buf);
-	}
-	else
+			if(FD_ISSET(p1[0],&rd_set))
+            {
+            	read(p1[0], buf, 10);
+            	printf("Message recieved from 1!!\n");
+                        
+            }
+            else if(FD_ISSET(p2[0],&rd_set))
+            {
+            	read(p2[0], buf, 10);
+     	        printf("Message recieved from 2!!\n");
+            }
+			printf("This is Parent\nThe data sent by child is\n");
+            printf("%s\n", buf);
+		}
+	
+		else
 		printf("No Data written by the Child in 10 seconds ,Exiting...\n");
 	}
 }
